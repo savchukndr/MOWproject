@@ -11,20 +11,25 @@ write_csv = function(fl, df){
 }
 
 
-# Function for generating data frame
-generate_df = function(book_id, user_id, br_isbn, br_user, br_rating){
-  
-  # Creating data frame with '0' values
-  df = data.frame(user_id=c(user_id))
-  for (column in book_id){
-    df[[column]] = 0
+# Function for genereting data frame
+generate_empty_df = function(unique_user_id, unique_isbn){
+  df = data.frame(user_id=c(unique_user_id))
+  for (column in unique_isbn){
+    df[[toString(column)]] = 0
   }
+  return(df)
+}
+
+
+# Function for filling data frame
+generate_complete_df = function(df, user_id, isbn, rating){
   
+  # browser()
   # Write book ratings into data frame
-  for (i in seq(length(br_user))){
-    cols = toString(br_isbn[[i]])
-    rows = br_user[[i]]
-    df[[cols]][[rows]] = br_rating[[i]]
+  for (i in seq(length(rating))){
+    cols = toString(isbn[[i]])
+    row = which(df$user_id == user_id[[i]])
+    df[[cols]][[row]] = rating[[i]]
   }
   return(df)
 }
@@ -32,20 +37,23 @@ generate_df = function(book_id, user_id, br_isbn, br_user, br_rating){
 # ------MAIN------
 
 #import data from csv files
-books_rating = read_csv(fl="~/Documents/MOWproj/BX-Book-Ratings.csv",rowLen=39)
-users = read_csv(fl="~/Documents/MOWproj/BX-Users.csv",rowLen=20)
-books = read_csv(fl="~/Documents/MOWproj/BX-Books.csv",rowLen=10)
+books_rating = read_csv(fl="~/Documents/BX-CSV-Dump 2/BX-Book-Ratings.csv", rowLen = 10000)
 
 # get specified columns from imported data
 col_br_user = books_rating[[1]]
 col_br_isbn = books_rating[[2]]
 col_br_rating = books_rating[[3]]
-col_users_id = users[[1]]
-col_books_id = books[[1]]
 
-# Generating converted data frame
-df = generate_df(col_books_id, col_users_id, col_br_isbn, col_br_user, col_br_rating)
+# Unique users and book's isbn
+unique_user_id = sort(unique(col_br_user))
+unique_book_id = sort(unique(col_br_isbn))
+
+# Generating empty data frame
+df_zero = generate_empty_df(unique_user_id, unique_book_id)
+
+# Filling df_zero with ratings
+df_complete = generate_complete_df(df_zero, col_br_user, col_br_isbn, col_br_rating)
 
 # Writing results to a csv file
-write_csv(fl="~/Documents/mowScript/res.csv", df=df)
+# write_csv(fl="~/Documents/mowScript/res.csv", df=df_complete)
 
