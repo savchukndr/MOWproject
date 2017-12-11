@@ -57,3 +57,16 @@ df_complete = generate_complete_df(df_zero, col_br_user, col_br_isbn, col_br_rat
 # Writing results to a csv file
 # write_csv(fl="~/Documents/mowScript/res.csv", df=df_complete)
 
+
+# Using the package
+
+#setwd(some_path/MOWproject)
+install.packages('comandante', repo=NULL, type='source')
+library(comandante)
+
+# Constructor should at least take additional argument with user-item matrix
+m <- new('RecommendationsModel')
+# Give 5 recommendations to users of IDs 1, 2 and 3
+recommendations <- Recommend(m, userList=c(1, 2, 3), n=5)
+# Predict what rating will user 1 give to item 1
+rating <- PredictRating(m, 1, 1)

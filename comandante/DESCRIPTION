@@ -1,0 +1,17 @@
+Package: comandante
+Type: Package
+Title: Simple Recommendation Library
+Description: Simple recommendation library written as part of a university project.
+Version: 0.1.0
+Authors@R: c(
+    person("Andrii", "Savchuk", email="savchukndr@gmail.com", role=c("aut")),
+    person("Carlos", "Zaldivar Batista", email="carlos.zaldivar.batista@gmail.com", role=c("aut", "cre"))
+    )
+Depends:
+    R (>= 3.4.1)
+License: MIT
+LazyData: true
+Suggests:
+    testthat
+Roxygen: list(wrap = FALSE)
+RoxygenNote: 6.0.1
