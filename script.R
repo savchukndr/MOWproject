@@ -34,10 +34,55 @@ generate_complete_df = function(df, user_id, isbn, rating){
   return(df)
 }
 
+
+# ----------------- ITEM-BASED -------------------
+
+# Create a helper function to calculate the cosine between two vectors
+getCosine = function(x,y) 
+{
+  this.cosine = sum(x*y) / (sqrt(sum(x*x)) * sqrt(sum(y*y)))
+  return(this.cosine)
+}
+
+item_based = function(df){
+  # Drop any column named "user"
+  df.ibs = (df[,!(names(df) %in% c("user_id"))])
+  
+  # Create a placeholder dataframe listing item vs. item
+  df.ibs.similarity  = matrix(NA, nrow=ncol(df.ibs),ncol=ncol(df.ibs),dimnames=list(colnames(df.ibs),colnames(df.ibs)))
+  
+  # Lets fill in those empty spaces with cosine similarities
+  # Loop through the columns
+  for(i in 1:ncol(df.ibs)) {
+    # Loop through the columns for each column
+    for(j in 1:ncol(df.ibs)) {
+      # Fill in placeholder with cosine similarities
+      df.ibs.similarity[i,j] = getCosine(as.matrix(df.ibs[i]),as.matrix(df.ibs[j]))
+    }
+  }
+  
+  # Back to dataframe
+  df.ibs.similarity = as.data.frame(df.ibs.similarity)
+  
+  # Get the top 10 neighbours for each
+  df.neighbours = matrix(NA, nrow=ncol(df.ibs.similarity),ncol=11,dimnames=list(colnames(df.ibs.similarity)))
+  
+  for(i in 1:ncol(df.ibs)) 
+  {
+    df.neighbours[i,] = (t(head(n=11,rownames(df.ibs.similarity[order(df.ibs.similarity[,i],decreasing=TRUE),][i]))))
+  }
+  
+  return(df.neighbours)
+}
+
+# --------------- END ITEM-BASED------------------
+
+
+
 # ------MAIN------
 
 #import data from csv files
-books_rating = read_csv(fl="~/Documents/BX-CSV-Dump 2/BX-Book-Ratings.csv", rowLen = 10000)
+books_rating = read_csv(fl="~/Documents/BX-CSV-Dump 2/BX-Book-Ratings.csv", rowLen = 20)
 
 # get specified columns from imported data
 col_br_user = books_rating[[1]]
@@ -55,7 +100,10 @@ df_zero = generate_empty_df(unique_user_id, unique_book_id)
 df_complete = generate_complete_df(df_zero, col_br_user, col_br_isbn, col_br_rating)
 
 # Writing results to a csv file
-# write_csv(fl="~/Documents/mowScript/res.csv", df=df_complete)
+write_csv(fl="~/Documents/Mow_project/res.csv", df=df_complete)
+
+# Item-based algorithm results
+df_item_based = item_based(df_complete)
 
 
 # Using the package
