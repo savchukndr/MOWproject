@@ -1,3 +1,5 @@
+# ------------------ DF GENERATOR ------------------
+
 # Function for reading data from csv file
 read_csv = function(fl, rowLen){
   read.csv(file=fl,nrows=rowLen, sep=";")
@@ -34,21 +36,30 @@ generate_complete_df = function(df, user_id, isbn, rating){
   return(df)
 }
 
+# -------------------------- END --------------------------------
 
-# ----------------- ITEM-BASED -------------------
+
+# ----------------- ITEM-BASED AND USER-BASED -------------------
 
 # Create a helper function to calculate the cosine between two vectors
-getCosine = function(x,y) 
+get_cosine = function(x,y) 
 {
   this.cosine = sum(x*y) / (sqrt(sum(x*x)) * sqrt(sum(y*y)))
   return(this.cosine)
 }
 
-item_based = function(df){
-  # Drop any column named "user"
+# A helper function to calculate the scores
+get_score <- function(history, similarities)
+{
+  x <- sum(history*similarities)/sum(similarities)
+  x
+}
+
+colaborative_filtering = function(df){
+  # Drop any column named "user_id"
   df.ibs = (df[,!(names(df) %in% c("user_id"))])
   
-  # Create a placeholder dataframe listing item vs. item
+  # Create a placeholder dataframe listing item vs.item
   df.ibs.similarity  = matrix(NA, nrow=ncol(df.ibs),ncol=ncol(df.ibs),dimnames=list(colnames(df.ibs),colnames(df.ibs)))
   
   # Lets fill in those empty spaces with cosine similarities
@@ -57,7 +68,7 @@ item_based = function(df){
     # Loop through the columns for each column
     for(j in 1:ncol(df.ibs)) {
       # Fill in placeholder with cosine similarities
-      df.ibs.similarity[i,j] = getCosine(as.matrix(df.ibs[i]),as.matrix(df.ibs[j]))
+      df.ibs.similarity[i,j] = get_cosine(as.matrix(df.ibs[i]),as.matrix(df.ibs[j]))
     }
   }
   
@@ -72,17 +83,70 @@ item_based = function(df){
     df.neighbours[i,] = (t(head(n=11,rownames(df.ibs.similarity[order(df.ibs.similarity[,i],decreasing=TRUE),][i]))))
   }
   
-  return(df.neighbours)
+  #################################
+  
+  # A placeholder matrix
+  holder <- matrix(NA, nrow=nrow(df),ncol=ncol(df)-1,dimnames=list((df$user_id),colnames(df[-1])))
+  
+  # Loop through the users (rows)
+  for(i in 1:nrow(holder)) 
+  {
+    # Loops through the products (columns)
+    for(j in 1:ncol(holder)) 
+    {
+      # Get the user's name and th product's name
+      # We do this not to conform with vectors sorted differently 
+      user <- rownames(holder)[i]
+      product <- colnames(holder)[j]
+      
+      # We do not want to recommend products you have already consumed
+      # If you have already consumed it, we store an empty string
+      if(as.integer(df[df$user_id==user,product]) == 1)
+      { 
+        holder[i,j]<-""
+      } else {
+        
+        # We first have to get a product's top 10 neighbours sorted by similarity
+        topN<-((head(n=11,(df.ibs.similarity[order(df.ibs.similarity[,product],decreasing=TRUE),][product]))))
+        topN.names <- as.character(rownames(topN))
+        topN.similarities <- as.numeric(topN[,1])
+        
+        # Drop the first one because it will always be the same song
+        topN.similarities<-topN.similarities[-1]
+        topN.names<-topN.names[-1]
+        
+        # We then get the user's purchase history for those 10 items
+        topN.purchases<- df[,c("user_id",topN.names)]
+        topN.userPurchases<-topN.purchases[topN.purchases$user_id==user,]
+        topN.userPurchases <- as.numeric(topN.userPurchases[!(names(topN.userPurchases) %in% c("user_id"))])
+        
+        # We then calculate the score for that product and that user
+        holder[i,j]<-get_score(similarities=topN.similarities,history=topN.userPurchases)
+        
+      } # close else statement
+    } # end product for loop   
+  } # end user for loop
+  
+  df.user.scores <- holder
+  
+  # Lets make our recommendations pretty
+  df.user.scores.holder <- matrix(NA, nrow=nrow(df.user.scores),ncol=100,dimnames=list(rownames(df.user.scores)))
+  for(i in 1:nrow(df.user.scores)) 
+  {
+    df.user.scores.holder[i,] <- names(head(n=100,(df.user.scores[,order(df.user.scores[i,],decreasing=TRUE)])[i,]))
+  }
+  
+  return(list(df.neighbours, df.user.scores.holder))
 }
 
-# --------------- END ITEM-BASED------------------
+# -------------------- END -----------------------
 
 
-
-# ------MAIN------
+# -------------------- MAIN ----------------------
 
 #import data from csv files
-books_rating = read_csv(fl="~/Documents/BX-CSV-Dump 2/BX-Book-Ratings.csv", rowLen = 20)
+books_rating = read_csv(fl="~/Documents/BX-CSV-Dump 2/BX-Book-Ratings.csv", rowLen = 1000)
+#books_rating = read_csv(fl="~/Documents/MOWproj/BX-Book-Ratings.csv", rowLen = 35)
 
 # get specified columns from imported data
 col_br_user = books_rating[[1]]
@@ -94,17 +158,20 @@ unique_user_id = sort(unique(col_br_user))
 unique_book_id = sort(unique(col_br_isbn))
 
 # Generating empty data frame
-df_zero = generate_empty_df(unique_user_id, unique_book_id)
+df.item.holder = generate_empty_df(unique_user_id, unique_book_id)
 
-# Filling df_zero with ratings
-df_complete = generate_complete_df(df_zero, col_br_user, col_br_isbn, col_br_rating)
+# Filling df.item.holder with ratings
+df.item.complete = generate_complete_df(df.item.holder, col_br_user, col_br_isbn, col_br_rating)
 
 # Writing results to a csv file
-write_csv(fl="~/Documents/Mow_project/res.csv", df=df_complete)
+# write_csv(fl="~/Documents/Mow_project/res.csv", df=df.item.complete)
 
-# Item-based algorithm results
-df_item_based = item_based(df_complete)
+# List that contains results from item-based and user-based algorithms 
+list_results = colaborative_filtering(df.item.complete)
 
+# Writing results to a csv file
+write_csv(fl="~/Documents/Mow_project/item.csv", df=list_results[[1]])
+write_csv(fl="~/Documents/Mow_project/user.csv", df=list_results[[2]])
 
 # Using the package
 
